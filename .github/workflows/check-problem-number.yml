@@ -1,0 +1,64 @@
+name: 🔎 Check for Duplicate Problem Numbers and Save Detailed Log
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-duplicates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🧾 Checkout repository
+        uses: actions/checkout@v3
+
+      - name: 🔍 Scan files and check duplicates
+        run: |
+          echo "📂 Scanning for problem files in all directories..."
+
+          # Find all .js files recursively with the pattern "number. filename.js"
+          files=$(find . -type f -name '*.js' | grep -Eo './.*[0-9]+\. [^/]*\.js' | sort)
+
+          # Initialize JSON array
+          echo "[" > problems-log.json
+
+          first=true
+          # Loop through each file to build JSON objects
+          while read -r file; do
+            # Remove './' from the beginning of the path
+            clean_file="${file#./}"
+
+            # Extract the number from the beginning of the filename
+            number=$(echo "$clean_file" | grep -Eo '^[0-9]+')
+
+            # Add a comma before each JSON object except the first one
+            if $first; then
+              first=false
+            else
+              echo "," >> problems-log.json
+            fi
+
+            # Write JSON object with id and file name
+            echo "  { \"id\": $number, \"file\": \"$clean_file\" }" >> problems-log.json
+          done <<< "$files"
+
+          echo "" >> problems-log.json
+          echo "]" >> problems-log.json
+
+          echo "📝 Detailed problem log created in problems-log.json:"
+          cat problems-log.json
+
+          # Extract numbers to check duplicates
+          numbers=$(echo "$files" | grep -Eo '[0-9]+' | sort)
+          duplicates=$(echo "$numbers" | uniq -d)
+
+          # If duplicates found, fail the workflow with error message
+          if [ ! -z "$duplicates" ]; then
+            echo "🚫 Duplicate problem numbers detected:"
+            echo "$duplicates"
+            echo "::error ::Duplicate problem number(s) detected: $duplicates"
+            exit 1
+          fi
+
+          echo "✅ No duplicate problem numbers found. All good!"

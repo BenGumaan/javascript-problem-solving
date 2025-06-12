@@ -15,10 +15,12 @@ jobs:
 
       - name: 🔍 Scan files and check duplicates
         run: |
-          set +e  # Disable exit on error to handle errors manually
+          set -e  # Fail on any error except where handled manually
+
           echo "📂 Scanning for problem files in all directories..."
 
-          # Find all .js files matching pattern, allow empty results without failing
+          # Find all .js files matching pattern "number. filename.js"
+          # If no files found, 'grep' returns non-zero, so '|| true' prevents failure
           files=$(find . -type f -name '*.js' | grep -Eo './.*[0-9]+\. [^/]*\.js' 2>/dev/null || true)
           files=$(echo "$files" | sort)
 
@@ -30,35 +32,15 @@ jobs:
             exit 0
           fi
 
-          echo "[" > problems-log.json
-
-          first=true
-          while IFS= read -r file; do
-            clean_file="${file#./}"
-            number=$(echo "$clean_file" | grep -Eo '^[0-9]+')
-
-            if $first; then
-              first=false
-            else
-              echo "," >> problems-log.json
-            fi
-
-            echo "  { \"id\": $number, \"file\": \"$clean_file\" }" >> problems-log.json
-          done <<< "$files"
-
-          echo "" >> problems-log.json
-          echo "]" >> problems-log.json
-
-          echo "📝 Detailed problem log created in problems-log.json:"
-          cat problems-log.json
-
+          # Extract problem numbers (only from start of filenames)
           numbers=$(echo "$files" | grep -Eo '^[0-9]+' | sort)
           echo "Extracted numbers:"
           echo "$numbers"
 
+          # Find duplicates using uniq -d
           duplicates=$(echo "$numbers" | uniq -d)
 
-          if [ ! -z "$duplicates" ]; then
+          if [ -n "$duplicates" ]; then
             echo "🚫 Duplicate problem numbers detected:"
             echo "$duplicates"
             echo "::error ::Duplicate problem number(s) detected: $duplicates"

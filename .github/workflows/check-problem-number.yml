@@ -15,36 +15,34 @@ jobs:
 
       - name: 🔍 Scan files and check duplicates
         run: |
+          set +e  # Disable exit on error to handle errors manually
           echo "📂 Scanning for problem files in all directories..."
 
-          # Find all .js files recursively with the pattern "number. filename.js"
-          files=$(find . -type f -name '*.js' | grep -Eo './.*[0-9]+\. [^/]*\.js' || true | sort)
+          # Find all .js files matching pattern, allow empty results without failing
+          files=$(find . -type f -name '*.js' | grep -Eo './.*[0-9]+\. [^/]*\.js' 2>/dev/null || true)
+          files=$(echo "$files" | sort)
+
+          echo "Found files:"
+          echo "$files"
 
           if [ -z "$files" ]; then
-            echo "⚠️ No problem files found matching the pattern."
+            echo "⚠️ No problem files found matching the pattern. Exiting gracefully."
             exit 0
           fi
 
-          # Initialize JSON array
           echo "[" > problems-log.json
 
           first=true
-          # Loop through each file to build JSON objects
-          while read -r file; do
-            # Remove './' from the beginning of the path
+          while IFS= read -r file; do
             clean_file="${file#./}"
-
-            # Extract the number from the beginning of the filename
             number=$(echo "$clean_file" | grep -Eo '^[0-9]+')
 
-            # Add a comma before each JSON object except the first one
             if $first; then
               first=false
             else
               echo "," >> problems-log.json
             fi
 
-            # Write JSON object with id and file name
             echo "  { \"id\": $number, \"file\": \"$clean_file\" }" >> problems-log.json
           done <<< "$files"
 
@@ -54,11 +52,12 @@ jobs:
           echo "📝 Detailed problem log created in problems-log.json:"
           cat problems-log.json
 
-          # Extract numbers to check duplicates
-          numbers=$(echo "$files" | grep -Eo '[0-9]+' | sort)
+          numbers=$(echo "$files" | grep -Eo '^[0-9]+' | sort)
+          echo "Extracted numbers:"
+          echo "$numbers"
+
           duplicates=$(echo "$numbers" | uniq -d)
 
-          # If duplicates found, fail the workflow with error message
           if [ ! -z "$duplicates" ]; then
             echo "🚫 Duplicate problem numbers detected:"
             echo "$duplicates"

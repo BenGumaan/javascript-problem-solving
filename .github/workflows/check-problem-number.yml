@@ -33,7 +33,7 @@ jobs:
           fi
 
           # Extract problem numbers (only from start of filenames)
-          numbers=$(echo "$files" | grep -Eo '^[0-9]+' | sort)
+          numbers=$(echo "$files" | grep -Eo '[0-9]+' | sort)
           echo "Extracted numbers:"
           echo "$numbers"
 

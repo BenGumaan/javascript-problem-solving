@@ -18,7 +18,12 @@ jobs:
           echo "📂 Scanning for problem files in all directories..."
 
           # Find all .js files recursively with the pattern "number. filename.js"
-          files=$(find . -type f -name '*.js' | grep -Eo './.*[0-9]+\. [^/]*\.js' | sort)
+          files=$(find . -type f -name '*.js' | grep -Eo './.*[0-9]+\. [^/]*\.js' || true | sort)
+
+          if [ -z "$files" ]; then
+            echo "⚠️ No problem files found matching the pattern."
+            exit 0
+          fi
 
           # Initialize JSON array
           echo "[" > problems-log.json

@@ -12,3 +12,5 @@ var twoSum = function(nums, target) {
     }
     return "Nothing found!";
 };
+
+// Problem link: https://leetcode.com/problems/two-sum/
